@@ -1,0 +1,159 @@
+---
+title: "STAT495 (Advanced Data Analysis)"
+author: "Nicholas Horton (nhorton@amherst.edu)"
+date: "November 7, 2016"
+output:
+  pdf_document:
+    fig_height: 3
+    fig_width: 5
+  html_document:
+    fig_height: 3
+    fig_width: 5
+  word_document:
+    fig_height: 3
+    fig_width: 5
+---
+
+
+```{r include=FALSE}
+library(mdsr)
+trellis.par.set(theme=theme.mosaic())  
+
+# knitr settings to control how R chunks work.
+library(knitr)
+opts_chunk$set(
+  tidy=FALSE,     # display code as typed
+  size="small"    # slightly smaller font for code
+)
+```
+
+### SQL and dplyr
+
+```{r message=FALSE}
+library(RMySQL)
+db <- src_scidb("airlines")
+flights <- tbl(db, "flights")
+carriers <- tbl(db, "carriers")
+```
+
+```{r warning=FALSE}
+q <- flights %>%
+  filter(year == 1996 & month == 9 & dest == "JFK") %>%
+  inner_join(carriers, by = c("carrier" = "carrier")) %>%
+  group_by(carrier) %>%
+  summarize(N = n(), pct_ontime = sum(arr_delay <= 15) / n()) %>%
+  filter(N >= 100) %>% arrange(desc(pct_ontime))
+head(q, 3)
+```
+
+Note that we can get (somewhat ugly) SQL translations from dplyr.
+
+```{r}
+show_query(q)
+```
+
+```{r}
+query <- "SELECT *
+FROM (SELECT *
+FROM (SELECT `carrier`, count(*) AS `N`, SUM(`arr_delay` <= 15.0) / count(*) AS `pct_ontime`
+FROM (SELECT * FROM (SELECT *
+FROM (SELECT *
+FROM `flights`
+WHERE (`year` = 1996.0 AND `month` = 9.0)) `gzmlvcdimf`
+WHERE (`dest` = 'JFK')) `sxzfnmbiww`
+INNER JOIN `carriers` USING (`carrier`)) `axvcucedqr`
+GROUP BY `carrier`) `wxtkiyemoe`
+WHERE (`N` >= 100.0)) `qrkfikumzk`
+ORDER BY `pct_ontime` DESC"
+```
+
+```{r warning=FALSE}
+ds <- DBI::dbGetQuery(db$con, query); head(ds, 3)
+```
+
+In groups of three, please work through the following exercises.
+Each of the following exercises can be solved via a single SQL query. Equivalently, each can be solved via a single pipeline of `dplyr` commands. Write valid solutions using both methods (please don't use `show_query()` to generate the SQL).
+
+
+#### Group Blue:
+How many domestic flights flew into Dallas-Fort Worth (`DFW`) on May 14, 1998?
+
+SOLUTION 1 (dplyr):
+
+```{r}
+
+```
+
+SOLUTION 2 (SQL):
+
+```{r}
+
+
+```
+
+#### Group Green: 
+Which airport had the highest average arrival delay time in 2008?
+
+SOLUTION 1 (dplyr):
+
+```{r}
+
+```
+
+SOLUTION 2 (SQL):
+
+```{r}
+
+
+```
+
+#### Group Orange: 
+Of all the destinations from Chicago O'Hare (`ORD`), which were the most common in 1997?
+
+SOLUTION 1 (dplyr):
+
+```{r}
+NICK <- flights %>%
+  filter(year == 1997, origin == "ORD") %>%
+  group_by(dest) %>%
+  summarize(counts = n()) %>%
+  arrange(desc(counts)) 
+
+NICK <- data_frame(NICK)
+head(NICK)
+```
+
+SOLUTION 2 (SQL):
+
+```{r}
+queryChicago <- "
+SELECT origin, dest, year, count(*) AS counts
+FROM flights 
+WHERE `origin` = 'ORD' AND `year` = 1997.0
+GROUP BY `dest`
+ORDER BY `counts` DESC"
+
+
+ds <- DBI::dbGetQuery(db$con, queryChicago)
+head(ds, 3)
+
+queryPUB <- "SELECT * FROM airports WHERE faa = 'PUB'"
+dsPUB <- DBI::dbGetQuery(db$con, queryPUB)
+dsPUB
+```
+
+#### Group Purple:
+Find all flights between `JFK` and `SFO` in 1994. How many were cancelled? What percentage of the total number of flights were cancelled?
+
+SOLUTION 1 (dplyr):
+
+```{r}
+
+```
+
+SOLUTION 2 (SQL):
+
+```{r}
+
+
+```
