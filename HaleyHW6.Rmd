@@ -1,0 +1,202 @@
+---
+title: "STAT495 (Advanced Data Analysis) HW#6"
+author: 'Connor Haley'
+date: 'October 24, 2016'
+output:
+  pdf_document:
+    fig_height: 3
+    fig_width: 5
+  html_document:
+    fig_height: 3
+    fig_width: 5
+  word_document:
+    fig_height: 3
+    fig_width: 5
+---
+
+
+```{r, include=FALSE}
+# Don't delete this chunk if you are using the mosaic package
+# This loads the mosaic and dplyr packages
+require(mosaic)
+```
+
+```{r, include=FALSE}
+# Some customization.  You can alter or delete as desired (if you know what you are doing).
+
+# This changes the default colors in lattice plots.
+trellis.par.set(theme=theme.mosaic())  
+
+# knitr settings to control how R chunks work.
+require(knitr)
+opts_chunk$set(
+  tidy=FALSE,     # display code as typed
+  size="small"    # slightly smaller font for code
+)
+```
+
+
+This assignment is due at the start of class on Monday, October 31st.  Please commit and push both your Rmd file and formatted pdf to a folder called `hw6` using your private STAT495 Github repo.  
+
+### PROBLEMS TO TURN IN:
+
+#### NHANES
+
+Use the `NHANES` training dataset to fit and interpret a linear regression model of BMI (body mass index) as a function of being physically active, using alcohol, age, gender, and poverty status.  
+
+Be sure to report RMSE for the training set and for the test set.  
+
+SOLUTION:  
+
+> The NHANES dataset was collected by the US National Center for Health Statistics, with 5000 individuals of all ages surveyed in both the 2009-2010 and the 2011-2012 survey periods. The variables we are using to predict BMI (body mass index, values from 12 to 81) include: 
+
+* PhysActiveDays (physically active days per week)  
+* AlcoholYear (days of consumption per year)   
+* Age (in years)  
+* Gender (female or male)  
+* Poverty Status (ratio of income to poverty line, low values indicate lower wealth, capped at 5)  
+  
+
+```{r}
+set.seed(1994)
+library(NHANES)
+#glimpse(NHANES)
+rows <- sample(1:nrow(NHANES), 8000)
+train <- NHANES[rows,]
+test <- NHANES[-rows,]
+```
+
+> Above we have separated the 10,000 observations in the NHANES dataset into an 8000 observation "training" set and a 2000 observation "test" set, selected randomly with no overlap between the two groups. The model is fit to the training set, which is shown below with a model summary. 
+
+```{r}
+# training set & model fit
+train <- select(train, BMI, PhysActiveDays, 
+                AlcoholYear, Age, Gender, Poverty)
+m1 <- lm(BMI ~ PhysActiveDays + AlcoholYear + 
+         Age + Gender + Poverty, data = train)
+summary(m1)
+
+# RMSE for training set
+sqrt(mean((m1$residuals)^2, na.rm=T))
+```
+
+> The model has a remarkably low $R^2$ value of just 0.033, meaning only 3.3% of the variance in BMI is being explained by our chosen factors, even though the model has a near-zero p-value. The RMSE (explained in further detail below) is 6.07, which in this model is quite high. The intercept coefficient of 28.47 gives the average BMI for the entire training set. Then, based on an observation's other measured characteristics, the model predicts an increase or decrease in BMI from that mean. 
+
+> The variables PhysActiveDays, AlcoholYear, and Poverty all have negative coefficients, indicating that those who are more active, consume more alcohol, and have higher incomes tend to have lower BMIs. While the effect size is small for all three of these variables, it is interesting to note the negative correlation between alcohol consumption and BMI, which is commonly thought to have a positive relationship, all else being equal.
+
+> The model also indicates that older members of the population (higher Age value) and males (Gendermale = 1) tend to have higher BMI. In particular, males are expected to have a BMI that is 0.77 points higher than a female with exactly the same other characteristics we are accounting for in the model. 
+
+```{r}
+# test/validation set
+test <- select(test, BMI, PhysActiveDays, AlcoholYear, Age, Gender, Poverty)
+bmi <- as.vector(test$BMI)
+
+# use test set with m1
+vals <- as.vector(predict(m1, test))
+```
+
+> In the code chunk above, the model from the training set is applied to the test set of the 2000 remaining observations from the NHANES dataset. Below, the RMSE value is calculated for the model applied to the test set. RMSE stands for Root Mean Squared Error, and is a measure of how well the model fits the observed data. The RMSE can be thought about as the standard deviation of the unexplained variance.
+
+> In this case, RMSE = 6.01 is quite high, it's also odd that it's larger than the training set! A standard deviation from the model's predicted BMI value of 6.01 points is a large percentage of the mean BMI value of 28.47. Based on this interpretation of the RMSE, we would not be pleased with the fit of our model. 
+
+```{r}
+#calculate RMSE
+sqrt(mean((vals - bmi)^2, na.rm=T))
+```
+
+> The graph below shows BMI against Age, and is broken down by Gender. The point of the plot is to show how negligible the Gender affect is in practice (the line for each gender is overlapping with approximately the same slope), even though it had the LARGEST coefficient in our model. This plot exemplifies how little of the variability we are able to capture in BMI with the variables we have chosen, while displaying one relationship we are confident about: BMI increases with Age regardless of Gender.
+
+```{r, warning=FALSE}
+# summarizing plot
+ggplot(data = test, aes(x=Age, y=BMI)) + 
+  geom_point()  + aes(colour=Gender)  + stat_smooth(method=lm) + 
+  theme(legend.position="top") + labs(title="BMI vs Age & Gender") +
+  ylim(10,40)
+```
+
+#### Exercise 15.11
+
+Download the content from stackexchange.com related to `dplyr` and summarize the comments (extra points for creative text analysis).  
+
+SOLUTION:
+
+```{r,include=FALSE}
+require(tidyr)
+require(tm)
+require(httr)
+```
+
+> The chunk below uses the GET function to extract data from stackoverflow.com, specifically questions with the "dplyr" tag. 
+
+```{r}
+# code inspired from MDSR exercise 15.10
+getresult <- GET("http://api.stackexchange.com", 
+  path = "questions", 
+  query = list(site = "stackoverflow.com", tagged = "dplyr"))
+stop_for_status(getresult)
+questions <- content(getresult)
+```
+
+> The chunk below creates a function to create a more organized dataframe from the list of lists originally scraped from the Internet.
+
+```{r, warning=FALSE}
+# not sure how to do this without using for loop...
+neatData <- function(){
+  d <- data.frame()
+  for (i in 1:length(questions$items))
+    {
+      #thanks to Coco for following line of code
+      item <- as.data.frame(t(
+        as.matrix(unlist(questions$items[[i]]))))
+      d <- bind_rows(d,item)
+  }
+  return(d)
+}
+
+ds <- neatData()
+
+#make things into numbers, omit useless variables
+ds <- ds[,1:20]
+ds$owner.reputation <- as.numeric(ds$owner.reputation)
+ds$is_answered <- as.logical(ds$is_answered)
+ds$view_count <- as.numeric(ds$view_count)
+ds$answer_count <- as.numeric(ds$answer_count)
+ds$score <- as.numeric(ds$score)
+```
+
+> Below I have created two graphics to summarize a few interesting relationships I've found in the data. First, I have compared the distribution of Owner Reputation Score for answered and unanswered questions. As you can see in the boxplot below, the average Owner Reputation Score is substantially higher for answered questions than for unanswered questions (moving up in Reputation Score is generally done in movements of 10 points or less, according to Stack Exchange, making this a larger gap than it may appear). Essentially, the "best" users in the past tend to be the "best" at answering questions in the future.
+
+```{r}
+ggplot(data = ds, aes(x=is_answered, y=owner.reputation)) + 
+  geom_boxplot()  + aes(colour=is_answered) + 
+  theme(legend.position="none") + 
+  labs(title="Reputation Scores for Answered & Unanswered Questions", 
+  x = "Question Answered?",
+  y = "Owner Reputation Score") + 
+  ylim(0,400)
+```
+
+> In addition, I've analyzed the relationship between title length (in characters) and whether or not the question has been answered. In other words, if you want your question answered, should you be specific with a long title or short and sweet? Or does it matter how wordy you are?
+
+```{r}
+ds <- mutate(ds, title_char = nchar(title))
+
+ggplot( data = ds, aes(x = title_char)) + 
+  geom_density(adjust=0.45) + 
+  aes(colour=is_answered, fill = is_answered, alpha=0.9) + 
+  labs(title="Title Length Distributions",
+  x = "Characters in Title",
+  y = "Density")
+```
+
+> The density plot above shows an interesting (in my opinion) similarity between answered and unanswered questions. They both "cluster" around 40, 60, and 80 characters, with answered questions tending to have slightly longer (mean = 57.3 vs 52.6) titles. Of course, this difference is far from significant (p = 0.63), since in our data we have only 5 unanswered questions to work with. A larger study could help to understand where a "sweet spot" is for title length to avoid confusion but provide necessary background.
+
+#### Exercise 11.5
+
+Create the time series plot of the weather data in the first exercise using `ggvis`.  Be sure to add an interactive component to the plot (e.g., brushing, selections) where actions in one plot show up in a second display.  Please include the URL for your published Shiny app here:
+
+YOUR URL GOES HERE:  
+
+> https://r.amherst.edu/apps/chaley17/Haley_Weather_App/
+
+
