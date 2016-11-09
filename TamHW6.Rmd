@@ -1,0 +1,64 @@
+###Tam's HW
+
+
+
+```{r}
+set.seed(1994)
+library(NHANES)
+rows <- sample(1:nrow(NHANES), 8000)
+train <- NHANES[rows,]
+dim(train)
+test <- NHANES[-rows,]
+dim(test)
+```
+
+SOLUTION:
+
+> NHANES is a survey data collected by the US National Center for Health Statistics (NCHS). The survey includes a series of health and nutrition-related questions which have been answered by approximatly 5,000 individuals of all ages every year since 1999 and a health examination component. The data we are looking into contains 10,000 rows of observations and 76 variables. Our variable of interests are: 
+```{r}
+```
+- `BMI`: body mass index, which is calculated as weight (in kg) divided by $height^2$ (in $m^2$)
+- `PhysActive`: a dummy variable to determine whether participant does any types of sports, fitness or recreational activities
+- `Alcohol12PlusYr`: a dummy variable to determine whether participant has consumed at least 12 drinks of any type of alcoholic beverage in any one year
+- `Poverty`: a ratio of family income to poverty guidelines; the smaller the number the poorer the particiapnt's household is
+- `Age` (in years) and `Gender` of participant
+
+> In order to explore the validation set approach, we begin by split the set of observations into two parts. We’ll start by selecting a random subset of 8,000 observations out of the original 10,000 observations. We refer to these observations as the training set. The test set or validation set includes the remaining 2,000 observations. 
+
+> We then use lm() to fit a linear regression using only the observations corresponding to the training set.
+
+```{r}
+fit_train <- lm(BMI~PhysActive+Alcohol12PlusYr+Age+Gender+Poverty, data=train)
+summary(fit_train)
+```
+
+> According to the value of R-squared, only 3.48% of the variability of the outcome variable BMI is explained by this regression model. 
+
+> PhysActive, Alcohol12PlusYr, and Poverty are the statistically siginificant predictors in the model. Specifically, holding other factors fixed, on average, BMI of a physically active participant is  1.98 kg/$m^2$ less than that of an inactive one; BMI of a participant who uses alcohol is 1.23 kg/$m^2$ less than that of one who doesn't; and, for an additional unit increase in the poverty ratio, BMI decreases by 0.18 kg/$m^2$. 
+
+```{r, warning=FALSE, message=FALSE, fig.height=12, fig.width=12}
+train1 <- train[!is.na(train$PhysActive),]
+train1 <- train1[!is.na(train1$Alcohol12PlusYr),]
+train1 <- train1 %>% 
+  mutate(PhysActive = ifelse(PhysActive == "No", "
+                             Not Physically Active", "Physically Active")) %>%
+  mutate(Alcohol12PlusYr = ifelse(Alcohol12PlusYr == "No", 
+                                  "Not An Alcohol User", "An Alcohol User"))
+ggplot(data = train1, aes(x=Poverty, y=BMI)) + 
+  geom_point(size=0.3, alpha=0.4)  +
+  facet_grid(PhysActive~Alcohol12PlusYr) + 
+  stat_smooth(method=lm) +
+  theme(legend.position="right") + 
+  labs(title="Relationship between BMI and Poverty based on 
+       whether a participant is physically active or an alcohol user") +
+  background_grid(major="xy", minor="none")
+```
+
+```{r}
+train_rmse <- sqrt(mean((train$BMI- predict(fit_train, train))^2, na.rm = TRUE))
+test_rmse <- sqrt(mean((test$BMI - predict(fit_train, test))^2, na.rm=TRUE))
+train_rmse
+test_rmse
+```
+
+> RMSE for the training set is 6.65 whereas RMSE for the test set is 6.33. These two values are low and pretty similar between two data sets, which suggests that this model is a good fit. 
