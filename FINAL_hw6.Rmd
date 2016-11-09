@@ -13,9 +13,10 @@ output:
     fig_width: 5
 ---
 
-```{r, setup, include=FALSE}
+```{r, setup, include=FALSE, message=FALSE}
 require(mosaic)   # Load additional packages here 
-
+require(xtable)
+options(comment.xtable=FALSE)
 # Some customization.  You can alter or delete as desired (if you know what you are doing).
 trellis.par.set(theme=theme.mosaic()) # change default color scheme for lattice
 knitr::opts_chunk$set(
@@ -43,6 +44,9 @@ SOLUTION:
 
 > The `NHANES` data set includes information on the National Health and Nutrition Examination Survey from 1999 to 2004. The set includes information on the race of the participant, their weight, if they use hard drugs, and if they have diabetes, as well as the variables used in the following model. 
 
+#### BMI  
+
+
 ```{r}
 histogram(~BMI, data=NHANES, xlab = "Body Mass Index", ylab = "Density",
           main= "BMI Distribution from NHANES")
@@ -50,9 +54,36 @@ histogram(~BMI, data=NHANES, xlab = "Body Mass Index", ylab = "Density",
 
 > BMI has a unimodal distribution which is right skewed. To examine the explanatory variables, a summary table is displayed below. 
 
-```{r}
 
+#### Our Predictors  
+
+
+* PhysActiveDays: physically active days per week
+* AlcoholDay: days of consumption per year
+* Age: in years
+* Gender: female or male
+* Poverty Status: ratio of income to poverty line, low values indicate lower wealth, capped at 5  
+  
+
+```{r, warning=FALSE, results = 'asis'}
+pa <- favstats(~PhysActive, data= NHANES)[c("min", "median", "mean", "max", "n")]
+ad <- favstats(~AlcoholDay, data= NHANES)[c("min", "median", "mean", "max", "n")]
+age <- favstats(~Age, data= NHANES)[c("min", "median", "mean", "max", "n")]
+pov <- favstats(~Poverty, data= NHANES)[c("min", "median", "mean", "max", "n")]
+preds <- rbind(pa, ad, age, pov)
+rownames(preds) <- c("PhysActive", "AlcoholDay", "Age", "Poverty")
+xtable(preds)
+```  
+
+
+```{r, include=FALSE, eval=FALSE}
+tally(~Gender, data=NHANES)
 ```
+
+
+There is an approximately even split between male and female participants in this study, with 5020 females and 4980 males.  
+
+
 
 ## Analysis
 
