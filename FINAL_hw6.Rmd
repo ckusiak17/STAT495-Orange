@@ -16,7 +16,8 @@ output:
 ```{r, setup, include=FALSE, message=FALSE}
 require(mosaic)   # Load additional packages here 
 require(xtable)
-options(comment.xtable=FALSE)
+require(cowplot)
+options(xtable.comment = FALSE)
 # Some customization.  You can alter or delete as desired (if you know what you are doing).
 trellis.par.set(theme=theme.mosaic()) # change default color scheme for lattice
 knitr::opts_chunk$set(
@@ -90,8 +91,10 @@ tally(~Gender, data=NHANES)
 
 #### The Assumptions   
 
-#####Linearity and Equal Variance:  
+#####Linearity and Equal Variance:    
 
+
+> 
 
 ```{r}
 training <- lm(BMI ~ PhysActiveDays + AlcoholDay + Age + Gender + Poverty, data = train)
@@ -106,6 +109,8 @@ plot(training, which=1)
 
 #####Normality:  
 
+> 
+
 ```{r}
 plot(training, which=2)
 ```  
@@ -115,13 +120,15 @@ plot(training, which=2)
 > Although we are not completely satisfied that we have met the conditions for linear regression, we will proceed with the analysis below.  
 
 
-#### Modeling
+#### Modeling  
 
 ```{r, results = 'asis'}
 xtable(summary(training))
 ```   
 
 > This model was created using 8,000 of the total 10,000 observations, this is our `train` set. From this model, we can conclude that at an $\alpha$ level of 0.05, the variables PhysActive, Poverty, and Age are significant in predicting a participant's Body Mass Index. For a one day per week increase in physical activity, there is expected to be a 0.194 unit decrease in BMI. A one year increase in a participant's age predicts a 0.025 unit increase in BMI. A one unit increase in a participant's poverty level predicts a 0.358 unit decrease in BMI. Intuitively, these results make sense. A poorer person may have less body mass, as well as a person who is physically active. An older person may have more body mass.   
+
+> While our model finds statistically significant predictors, it is interesting to note that the $r^2$ is only 0.020. This means our model only accounts for 2% of the variation in BMI.  
 
 > We next tested this linear model on the `test` data which includes the remaining 2,000 observations from the original NHANES data set. The RMSEs are reported below.  
 
@@ -138,6 +145,31 @@ xtable(FrameH)
 
 
 > Contrarily to what might be expected, the RMSE for the test set is greater than the RMSE for the training set. This however may be because the variance of the training set is greater than that of the test set. These two values are low and pretty similar between two data sets, which suggests that this model is a good fit.  
+
+##Visualization  
+
+```{r, warning=FALSE, message=FALSE, fig.height=12, fig.width=12}
+train1 <- NHANES[!is.na(NHANES$PhysActive),]
+train1 <- train1[!is.na(train1$Alcohol12PlusYr),]
+train1 <- train1 %>% 
+  mutate(PhysActive = ifelse(PhysActive == "No", "
+                             Not Physically Active", "Physically Active")) %>%
+  mutate(Alcohol12PlusYr = ifelse(Alcohol12PlusYr == "No", 
+                                  "Not An Alcohol User", "An Alcohol User"))
+ggplot(data = train1, aes(x=Poverty, y=BMI)) + 
+  geom_point(size=0.3, alpha=0.4)  +
+  facet_grid(PhysActive~Alcohol12PlusYr) + 
+  stat_smooth(method=lm) +
+  theme(legend.position="right") + ylim(min = 10, max=50) +
+  labs(title="Relationship between BMI and Poverty based on 
+       whether a participant is physically active or an alcohol user") +
+  background_grid(major="xy", minor="none")
+```  
+
+> As shown in this plot, we can conclude that after controlling for physical activity and alcohol use, BMI does not vary much based on poverty level.  
+
+> This study found a lot more alcohol users than non-alcohol users shown by the density of points in left plots. The study however, found a similiar number of phsycially active and not physically active participants, as shown by the densities in the plots from top to bottom.  
+
 
 
 
