@@ -41,15 +41,22 @@ SOLUTION:
 
 ##Background  
 
-The `NHANES` data set includes information on the National Health and Nutrition Examination Survey from 1999 to 2004. The set includes information on the race of the participant, their weight,if they use hard drugs, and if they have diabetes, as well as the variables used in the following model. 
+> The `NHANES` data set includes information on the National Health and Nutrition Examination Survey from 1999 to 2004. The set includes information on the race of the participant, their weight, if they use hard drugs, and if they have diabetes, as well as the variables used in the following model. 
 
 ```{r}
 histogram(~BMI, data=NHANES, xlab = "Body Mass Index", ylab = "Density",
           main= "BMI Distribution from NHANES")
 ```  
 
-BMI has a unimodal distribution which is right skewed.
+> BMI has a unimodal distribution which is right skewed. To examine the explanatory variables, a summary table is displayed below. 
 
+```{r}
+
+```
+
+## Analysis
+
+> 
 
 
 
