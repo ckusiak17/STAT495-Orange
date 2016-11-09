@@ -1,0 +1,224 @@
+---
+title: "STAT495 (Advanced Data Analysis) HW#6"
+author: 'Coco Kusiak'
+date: 'October 24, 2016'
+output:
+  pdf_document:
+    fig_height: 3
+    fig_width: 5
+  html_document:
+    fig_height: 3
+    fig_width: 5
+  word_document:
+    fig_height: 3
+    fig_width: 5
+---
+
+
+```{r, include=FALSE}
+require(mdsr)
+# Some customization.  You can alter or delete as desired (if you know what you are doing).
+
+# This changes the default colors in lattice plots.
+trellis.par.set(theme=theme.mosaic())  
+
+# knitr settings to control how R chunks work.
+require(knitr)
+require(xtable)
+options(xtable.comment=FALSE)
+opts_chunk$set(
+  tidy=FALSE,     # display code as typed
+  size="small"    # slightly smaller font for code
+)
+```
+
+```{r, include=FALSE}
+# Load additional packages here.  Uncomment the line below to use Project MOSAIC data sets.
+# require(mosaicData)   
+```
+
+This assignment is due at the start of class on Monday, October 31st.  Please commit and push both your Rmd file and formatted pdf to a folder called `hw6` using your private STAT495 Github repo.  
+
+### PROBLEMS TO TURN IN:
+
+#### NHANES
+
+Use the `NHANES` training dataset to fit and interpret a linear regression model of BMI (body mass index) as a function of being physically active, using alcohol, age, gender, and poverty status.  
+
+Be sure to report RMSE for the training set and for the test set.
+
+
+```{r}
+set.seed(1994)
+library(NHANES)
+#glimpse(NHANES)
+rows <- sample(1:nrow(NHANES), 8000)
+train <- NHANES[rows,]
+dim(train)
+test <- NHANES[-rows,]
+dim(test)
+```
+
+Your report should provide background on these data, describe the analytic sample, fit and interpret the model, and undertake model assessment.  You should include one figure that summarizes key findings.
+
+
+SOLUTION:  
+
+##Background  
+
+The `NHANES` data set includes information on the National Health and Nutrition Examination Survey from 1999 to 2004. The set includes information on the race of the participant, their weight,if they use hard drugs, and if they have diabetes, as well as the variables used in the following model. 
+
+```{r}
+histogram(~BMI, data=NHANES, xlab = "Body Mass Index", ylab = "Density",
+          main= "BMI Distribution from NHANES")
+```  
+
+BMI has a unimodal distribution which is right skewed.   
+
+## Analysis  
+
+
+```{r, results = 'asis'}
+training <- lm(BMI ~ PhysActive + AlcoholDay + Age + Gender + Poverty, data = train)
+xtable(summary(training))
+```   
+
+This model was created using 8,000 of the total 10,000 observations, this is our `train` set. From this model, we can conclude that at an $\alpha$ level of 0.05, the variables PhysActive, Poverty, and Age are significant in predicting a participant's Body Mass Index. If a participant is physically active, a decrease of 1.69 is expected in BMI. A one year increase in a participant's age predicts a 0.014 unit increase in BMI. A one unit increase in a participant's poverty level predicts a 0.19 unit decrease in BMI. Intuitively, these results make sense. A poorer person may have less body mass, as well as a person who is physically active. An older person may have more body mass.   
+
+We next tested this linear model on the `test` data which includes the remaining 2,000 observations from the original NHANES data set. The RMSEs are reported below.  
+
+
+```{r, results='asis'}
+rmseTrain <- sqrt(mean((training$residuals)^2))
+simsTest <- predict(training, test)
+realsTest <- test$BMI
+rmseTest <- sqrt(mean((simsTest - realsTest)^2, na.rm=TRUE))
+FrameH <- data.frame(Set = c("Training", "Test"), RMSE = c(rmseTrain, rmseTest), 
+                     Variance = c(var(train$BMI, na.rm=TRUE), var(test$BMI, na.rm=TRUE)))
+xtable(FrameH)
+```
+
+
+Contrarily to as expected, the RMSE for the test set is greater than the RMSE for the training set. This however may be because the variance of the training set is greater than that of the test set. 
+
+#### Exercise 15.11
+
+Download the content from stackexchange.com related to `dplyr` and summarize the comments (extra points for creative text analysis).
+
+
+SOLUTION:
+
+```{r, warning=FALSE}
+library(httr)
+getresult <- GET("http://api.stackexchange.com", 
+                 path= "questions",
+                 query = list(site = "stackoverflow.com", tagged = "dplyr"))
+stop_for_status(getresult)
+questions <- content(getresult)
+
+
+items <- as.data.frame(t(as.matrix(unlist(questions$items[[1]]))))
+
+for (i in 2:as.integer(length(questions$items))){
+  itemsAdd <- as.data.frame(t(as.matrix(unlist(questions$items[[i]]))))
+  items<- bind_rows(items, itemsAdd) 
+}
+
+items <- items %>%
+  mutate(owner.reputation = as.numeric(owner.reputation), 
+         view_count = as.numeric(view_count),
+         answer_count = as.numeric(answer_count),
+         score = as.numeric(score),
+         shiny = ifelse(tags2 %in% "shiny" | tags3 %in% "shiny" | 
+                          tags4 %in% "shiny" | tags5 %in% "shiny", 1, 0),
+         df = ifelse(tags2 %in% "dataframe" | tags3 %in% "dataframe" | 
+                          tags4 %in% "dataframe" | tags5 %in% "dataframe", 1, 0),
+         group.by = ifelse(tags2 %in% "group-by" | tags3 %in% "group-by" | 
+                          tags4 %in% "group-by" | tags5 %in% "group-by", 1, 0),
+         if.statement = ifelse(tags2 %in% "if-statement" | tags3 %in% "if-statement" | 
+                          tags4 %in% "if-statement" | tags5 %in% "if-statement", 1, 0)) %>%
+  select(owner.reputation, owner.display_name, is_answered, view_count, answer_count, 
+         score, title, shiny, df, group.by, if.statement)
+```  
+
+There are 30 unique display names with 30 unique question titles.  
+
+
+```{r, results='asis', warning=FALSE}
+dfs <- tally(~df, data=items)["1"]
+shinys <- tally(~shiny, data=items)["1"]
+groups <- tally(~group.by, data=items)["1"]
+ifs <- tally(~if.statement, data=items)["1"]
+stackFrame <- cbind(c("Dataframe", "Shiny", "Group By", 
+                           "If Statments"), 
+                           c(dfs, ifs, shinys, groups))
+colnames(stackFrame) <- c("Tags", "Counts")
+xtable(stackFrame)
+```  
+
+Of these 30 questions tagged with "dplyr", 3 were also tagged with "dataframe".  
+
+
+```{r, warning=FALSE}
+ggplot(data = items, aes(x=is_answered, y=view_count)) + geom_boxplot() + 
+  theme(legend.position="right") + ylim(0, 130) +
+  labs(list(title="View Count vs. Answered", x = "Is Answered?", y = "View Count"))
+```    
+
+As shown in this graph, questions that are answered have a higher median amount of views. They also however, have a larger variance. 
+
+**Note:** Three outliers are not shown in this plot. They are displayed in the following table.  
+
+```{r, results = 'asis'}
+outliers <- items %>%
+  filter(view_count > 130) %>%
+  select(view_count, owner.display_name, owner.reputation, is_answered,  
+         answer_count, score, title) %>%
+  rename(Views = view_count, Owner = owner.display_name, 
+       Rep = owner.reputation, Answered = is_answered, Answers = answer_count, 
+       Score = score, Title = title)
+outliers <- mutate(outliers, Title = strtrim(outliers$Title, 48))
+xtable(outliers, digits = c(0, 0, 0, 0, 0, 0, 0, 0))
+```  
+
+Both of these questions are answered. These questions have 7148 and 1880 views respectively. Interestingly, however, they only have 2 and 1 answers respectively.   
+
+
+The table below includes some additional statistics on the results.  
+
+```{r, results = 'asis'}
+viewMean <- mean(items$view_count)
+answerMean <- mean(items$answer_count)
+scoreMean <- mean(items$score)
+repMean <- mean(items$owner.reputation)
+titleMean <- mean(nchar(items$title))
+nameMean <- mean(nchar(items$owner.display_name))
+propAnswered <- sum(items$is_answered == "TRUE")/length(items$is_answered)
+
+FrameStats <- data.frame(
+  Variable = c("Mean # Characters in Title", "Mean # Characters in Owner's Name", 
+               "Mean # of Views",  "Proportion of Questions Answered", "Mean # of Answers", 
+               "Mean Score", "Mean Owner Reputation"),
+  Statistics = c(titleMean, nameMean, viewMean, propAnswered, 
+                answerMean, scoreMean, repMean))
+xtable(FrameStats, digits = c(0, 0, 2))
+```  
+
+Although on average about 83% of questions are answered, and on average, a question has about 550 views, the mean number of answers is very small, less than 2. 
+
+
+
+
+#### Exercise 11.5
+
+Create the time series plot of the weather data in the first exercise using `ggvis`.  Be sure to add an interactive component to the plot (e.g., brushing, selections) where actions in one plot show up in a second display.  Please include the URL for your published Shiny app here:
+
+
+
+SOLUTION: 
+
+YOUR URL GOES HERE:
+
+
+https://r.amherst.edu/apps/ckusiak17/Weather/
+
