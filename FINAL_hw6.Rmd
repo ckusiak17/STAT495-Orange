@@ -52,28 +52,29 @@ histogram(~BMI, data=NHANES, xlab = "Body Mass Index", ylab = "Density",
           main= "BMI Distribution from NHANES")
 ```  
 
-> BMI has a unimodal distribution which is right skewed. To examine the explanatory variables, a summary table is displayed below. 
-
+> BMI has a unimodal distribution which is right skewed.   
 
 #### Our Predictors  
 
 
-* PhysActiveDays: physically active days per week
-* AlcoholDay: days of consumption per year
-* Age: in years
-* Gender: female or male
-* Poverty Status: ratio of income to poverty line, low values indicate lower wealth, capped at 5  
+ - **PhysActiveDays:** physically active days per week
+ - **AlcoholDay:** days of consumption per year
+ - **Age:** in years
+ - **Gender:** female or male
+ - **Poverty Status:** ratio of income to poverty line, low values indicate lower wealth, capped at 5  
   
 
 ```{r, warning=FALSE, results = 'asis'}
-pa <- favstats(~PhysActive, data= NHANES)[c("min", "median", "mean", "max", "n")]
+pa <- favstats(~PhysActiveDays, data= NHANES)[c("min", "median", "mean", "max", "n")]
 ad <- favstats(~AlcoholDay, data= NHANES)[c("min", "median", "mean", "max", "n")]
 age <- favstats(~Age, data= NHANES)[c("min", "median", "mean", "max", "n")]
 pov <- favstats(~Poverty, data= NHANES)[c("min", "median", "mean", "max", "n")]
 preds <- rbind(pa, ad, age, pov)
-rownames(preds) <- c("PhysActive", "AlcoholDay", "Age", "Poverty")
+rownames(preds) <- c("PhysActiveDays", "AlcoholDay", "Age", "Poverty")
 xtable(preds)
-```  
+```    
+
+> Our initial exploration of these variables shows that AlcoholDay has a strong right skew, with a max of 82 drinks per day. In addition, for both PhysActiveDays and AlcoholDay, were are missing apporixmately half of our initial observations with n equal to 4663 and 4914, respectively.  
 
 
 ```{r, include=FALSE, eval=FALSE}
@@ -81,13 +82,63 @@ tally(~Gender, data=NHANES)
 ```
 
 
-There is an approximately even split between male and female participants in this study, with 5020 females and 4980 males.  
+> There is an approximately even split between male and female participants in this study, with 5020 females and 4980 males.  
 
 
 
 ## Analysis
 
-> 
+#### The Assumptions   
+
+#####Linearity and Equal Variance:  
+
+
+```{r}
+training <- lm(BMI ~ PhysActiveDays + AlcoholDay + Age + Gender + Poverty, data = train)
+plot(training, which=1)
+```  
+
+> Based on this plot, we have no evidence that the relationship is not linear. There is no clear pattern in the residuals. Also from this plot, we worry about the equal variance assumption due to there not being an even distribution of points through the fitted values.    
+
+#####Independence:  
+
+> We assume that the BMIs of participants in the study are not dependent on eachother.  
+
+#####Normality:  
+
+```{r}
+plot(training, which=2)
+```  
+
+> From this plot, we are also worried about the normality assumption because the distribution of our residuals is not consistent with a normal distribution, since our plotted residuals do not follow the line representing a normal distribution.
+
+> Although we are not completely satisfied that we have met the conditions for linear regression, we will proceed with the analysis below.  
+
+
+#### Modeling
+
+```{r, results = 'asis'}
+xtable(summary(training))
+```   
+
+> This model was created using 8,000 of the total 10,000 observations, this is our `train` set. From this model, we can conclude that at an $\alpha$ level of 0.05, the variables PhysActive, Poverty, and Age are significant in predicting a participant's Body Mass Index. For a one day per week increase in physical activity, there is expected to be a 0.194 unit decrease in BMI. A one year increase in a participant's age predicts a 0.025 unit increase in BMI. A one unit increase in a participant's poverty level predicts a 0.358 unit decrease in BMI. Intuitively, these results make sense. A poorer person may have less body mass, as well as a person who is physically active. An older person may have more body mass.   
+
+> We next tested this linear model on the `test` data which includes the remaining 2,000 observations from the original NHANES data set. The RMSEs are reported below.  
+
+
+```{r, results='asis'}
+rmseTrain <- sqrt(mean((training$residuals)^2))
+simsTest <- predict(training, test)
+realsTest <- test$BMI
+rmseTest <- sqrt(mean((simsTest - realsTest)^2, na.rm=TRUE))
+FrameH <- data.frame(Set = c("Training", "Test"), RMSE = c(rmseTrain, rmseTest), 
+                     Variance = c(var(train$BMI, na.rm=TRUE), var(test$BMI, na.rm=TRUE)))
+xtable(FrameH)
+```
+
+
+> Contrarily to what might be expected, the RMSE for the test set is greater than the RMSE for the training set. This however may be because the variance of the training set is greater than that of the test set. These two values are low and pretty similar between two data sets, which suggests that this model is a good fit.  
+
 
 
 
