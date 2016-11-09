@@ -1,0 +1,55 @@
+---
+title: "Revised Homework 6"
+author: "Orange Group - Tam Tran The, Coco Kusiak, Connor Haley"
+output: 
+  pdf_document:
+    fig_height: 3
+    fig_width: 5
+  html_document:
+    fig_height: 3
+    fig_width: 5
+  word_document:
+    fig_height: 3
+    fig_width: 5
+---
+
+```{r, setup, include=FALSE}
+require(mosaic)   # Load additional packages here 
+
+# Some customization.  You can alter or delete as desired (if you know what you are doing).
+trellis.par.set(theme=theme.mosaic()) # change default color scheme for lattice
+knitr::opts_chunk$set(
+  tidy=FALSE,     # display code as typed
+  size="small")   # slightly smaller font for code
+```
+
+```{r}
+set.seed(1994)
+library(NHANES)
+#glimpse(NHANES)
+rows <- sample(1:nrow(NHANES), 8000)
+train <- NHANES[rows,]
+dim(train)
+test <- NHANES[-rows,]
+dim(test)
+```
+
+Your report should provide background on these data, describe the analytic sample, fit and interpret the model, and undertake model assessment.  You should include one figure that summarizes key findings.
+
+
+SOLUTION:  
+
+##Background  
+
+The `NHANES` data set includes information on the National Health and Nutrition Examination Survey from 1999 to 2004. The set includes information on the race of the participant, their weight,if they use hard drugs, and if they have diabetes, as well as the variables used in the following model. 
+
+```{r}
+histogram(~BMI, data=NHANES, xlab = "Body Mass Index", ylab = "Density",
+          main= "BMI Distribution from NHANES")
+```  
+
+BMI has a unimodal distribution which is right skewed.
+
+
+
+
